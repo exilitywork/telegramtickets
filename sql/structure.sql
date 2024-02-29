@@ -398,17 +398,17 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_telegramtickets_tickets` (
     `priority` INT,
     `date` TIMESTAMP NULL DEFAULT NULL,
     `actiontime` INT,
-    `itilcategories_id` INT UNSIGNED,
-    `documents_id` INT UNSIGNED,
-    `locations_id` INT UNSIGNED,
-    `requesttypes_id` INT UNSIGNED,
+    `itilcategories_id` INT,
+    `documents_id` BIGINT,
+    `locations_id` INT,
+    `requesttypes_id` INT,
     `type` INT,
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
 CREATE TABLE IF NOT EXISTS `glpi_plugin_telegramtickets_users` (
-    `id` bigint UNSIGNED,
-    `users_id` INT UNSIGNED,
+    `id` bigint UNSIGNED NOT NULL,
+    `users_id` INT UNSIGNED NOT NULL,
     `is_authorized` INT(1) DEFAULT 0,
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;

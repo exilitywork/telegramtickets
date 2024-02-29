@@ -73,7 +73,7 @@ class Telegram extends \CommonDBTM
             'database' => $DB->dbdefault,
         ];
 
-        print_r('<pre>');
+        //print_r('<pre>');
 
         try {
             // Create Telegram API object
@@ -89,7 +89,6 @@ class Telegram extends \CommonDBTM
             // Handle telegram getUpdates request
             $serverResponse = $telegram->handleGetUpdates();
             if ($serverResponse->isOk()) {
-                //echo '<pre>';
                 $updates = $serverResponse->getResult();
                 foreach($updates as $update) {
                     //print_r('-------- Telegram.php 220<br>');
@@ -107,7 +106,7 @@ class Telegram extends \CommonDBTM
 
                         $data = [
                             'chat_id'      => $chatId,
-                            'text'         => 'Здравствуйте!1 Для того, чтобы cоздать новую заявку нажмите кнопку "Создать заявку". Если кнопки нет, то нажмите /start',
+                            'text'         => 'Здравствуйте! Для того, чтобы cоздать новую заявку нажмите кнопку "Создать заявку". Если кнопки нет, то нажмите /start',
                             'reply_markup' => new Keyboard([
                                 'keyboard' => [
                                     ['Создать заявку']
@@ -141,6 +140,7 @@ class Telegram extends \CommonDBTM
                                 $data['text'] = 'Пароль верный! Введите вашу фамилию';
                             } else {
                                 $data['text'] = 'Пароль неверный! Для доступа к заявкам введите правильный пароль';
+                                if($text == 'Создать заявку') $data['text'] = 'Для доступа к заявкам введите правильный пароль';
                             }
                             unset($data['reply_markup']);
                         // определение пользователя GLPI
@@ -176,11 +176,7 @@ class Telegram extends \CommonDBTM
 
                                     $inline_keyboard->__set('inline_keyboard', $keysV);
 
-                                    $data = [
-                                        'chat_id'      => $chatId,
-                                        'text'         => 'inline keyboard',
-                                        'reply_markup' => $inline_keyboard,
-                                    ];
+                                    $data['reply_markup'] = $inline_keyboard;
                                 }
                             }
                         // обработка нажатия кнопки "Создать заявку"
@@ -201,8 +197,10 @@ class Telegram extends \CommonDBTM
                                     $validInput = true;
                                     // если текущее поле - "Документы", то загружаем файл и получаем его ID
                                     if($field['id'] == 142) {
-                                        if($docID = $ticket->addFile($message)) {
-                                            $text = $docID;
+                                        if(is_null($ticket->fields['documents_id'])) {
+                                            if($docID = $ticket->addFile($message)) {
+                                                $text = $docID;
+                                            }
                                         }
                                     }
                                     // если текущее поле - "Дата открытия", то преобразуем введенную дату в формат "Y-m-d H:i:s"
@@ -250,14 +248,14 @@ class Telegram extends \CommonDBTM
                                             ['text' => 'Создать новую', 'callback_data' => 'action=add_ticket&users_id='.$user->fields['users_id']]
                                         ]);
                                     } else { // вывод предложения для ввода данных по следующему полю
-                                        $data['text'] = $field['request_translation'].'---- Telegram.php';
+                                        $data['text'] = $field['request_translation'];
                                         if(!$validInput && $field['id'] == 15) $data['text'] = 'Некорректная дата! Повторите ввод (пример: 22.02.2024 15:00)';
                                         if(!$validInput && $field['id'] == 45) $data['text'] = 'Некорректное количество часов! Повторите ввод в часах (пример: 22)';
                                         unset($data['reply_markup']);
                                         if(!$field['is_mandatory']) {
                                             $data['reply_markup'] = new InlineKeyboard([
                                                 [
-                                                    'text' => 'Продолжить создание', 
+                                                    'text' => 'Пропустить', 
                                                     'callback_data' => 'action=skip_field&users_id='.$user->fields['users_id'].'&field='.$field['id']
                                                 ]
                                             ]);

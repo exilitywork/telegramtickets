@@ -76,9 +76,10 @@ class User extends \CommonDBTM {
         return false;
     }
 
-    public static function checkAuth($chatId) {
-        $users = (new self)->find(['id' => $chatId, 'is_authorized' => 1]);
-        return count($users);
+    public function checkAuth($chatId) {
+        $user = current((new self)->find(['id' => $chatId, 'is_authorized' => 1]));
+        //if(is_null(current($users)['users_id'])) return false;
+        return $user;
     }
 
     public static function getUsers($name) {
@@ -129,7 +130,7 @@ class User extends \CommonDBTM {
               *     [ [ "text" => "Включить звук", "callback_data" => "action=sound&value=1" ] ]
               *  ];
               **/    
-            print_r($query->getData());
+            //print_r($query->getData());
             parse_str($query->getData(), $params);
          
             $data = [

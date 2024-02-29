@@ -153,8 +153,10 @@ class Ticket extends \CommonDBTM {
             $result = Request::emptyResponse();
             $chatId = $query->getMessage()->getChat()->getId();
             $messageId = $query->getMessage()->getMessageId();
+
+            $hasData = true;
             
-             /** в params парсятся параметры, заданные в инлайн клавиатуре
+            /** в params парсятся параметры, заданные в инлайн клавиатуре
               *
               * например:
               *  $data['reply_markup'] = ['inline_keyboard' => [ 
@@ -177,32 +179,40 @@ class Ticket extends \CommonDBTM {
             // проверка количества найденных незаконченных заявок
             if(count($tickets) > 1) {
                 $data['text'] = 'Найдено несколько незаконченных заявок! Обратитесь к администратору!';
-            } else {
+            } elseif(count($tickets)) {
                 // обработка команд
                 $ticket->getFromDB(current($tickets)['id']);
                 switch($params['action']) {
                     // установка поля "Срочность"
                     case 'set_urgency':
-                        $ticket->fields['urgency'] = $params['urgency'];
-                        $ticket->updateInDB(array_keys($ticket->fields));
+                        if(is_null($ticket->fields['urgency'])) {
+                            $ticket->fields['urgency'] = $params['urgency'];
+                            $ticket->updateInDB(array_keys($ticket->fields));
+                        }
                         $data = $ticket->create($data, $user, $params['action']);
                         break;
                     // установка поля "Влияние"
                     case 'set_impact':
-                        $ticket->fields['impact'] = $params['impact'];
-                        $ticket->updateInDB(array_keys($ticket->fields));
+                        if(is_null($ticket->fields['impact'])) {
+                            $ticket->fields['impact'] = $params['impact'];
+                            $ticket->updateInDB(array_keys($ticket->fields));
+                        }
                         $data = $ticket->create($data, $user, $params['action']);
                         break;
                     // установка поля "Приоритет"
                     case 'set_priority':
-                        $ticket->fields['priority'] = $params['priority'];
-                        $ticket->updateInDB(array_keys($ticket->fields));
+                        if(is_null($ticket->fields['priority'])) {
+                            $ticket->fields['priority'] = $params['priority'];
+                            $ticket->updateInDB(array_keys($ticket->fields));
+                        }
                         $data = $ticket->create($data, $user, $params['action']);
                         break;
                     // установка поля "Категория"
                     case 'set_category':
-                        $ticket->fields['itilcategories_id'] = $params['itilcategories_id'];
-                        $ticket->updateInDB(array_keys($ticket->fields));
+                        if(is_null($ticket->fields['itilcategories_id'])) {
+                            $ticket->fields['itilcategories_id'] = $params['itilcategories_id'];
+                            $ticket->updateInDB(array_keys($ticket->fields));
+                        }
                         $data = $ticket->create($data, $user, $params['action']);
                         break;
                     // навигация по списку категорий
@@ -237,6 +247,7 @@ class Ticket extends \CommonDBTM {
                     // пропуск необязательно поля
                     case 'skip_field':
                         $ticket->fields[self::FIELDS[$params['field']]] = -1; // если поле пропущено, то в него записывается "-1"
+                        print_r($ticket);
                         $ticket->updateInDB(array_keys($ticket->fields));
                         $data = $ticket->create($data, $user, $params['action']);
                         break;
@@ -250,7 +261,7 @@ class Ticket extends \CommonDBTM {
                         foreach($tickets as $fields) {
                             // удаление полей со значением NULL
                             foreach($fields as $field => $value) {
-                                if(is_null($fields[$field])) unset($fields[$field]);
+                                if(is_null($fields[$field]) || $fields[$field] == '-1') unset($fields[$field]);
                             }
                             // подготовка параметров для создания заявки в GLPI
                             $tgTicketId = $fields['id']; // ID создаваемой заявке в Telegram
@@ -262,6 +273,7 @@ class Ticket extends \CommonDBTM {
                             $fields['_actors']['requester'][0] = $requester;
                             $fields['add'] = 1;
                             $fields['id'] = 0;
+                            $fields['users_id_lastupdater'] = $ticket->fields['users_id'];
                             $fields['_glpi_csrf_token'] = \Session::getNewCSRFToken();
                             //print_r($fields);
 
@@ -324,13 +336,16 @@ class Ticket extends \CommonDBTM {
                         $data = $ticket->create($data, $user);
                         break;
                     default:
-                        $data['text'] = 'Необрабатываемое действие по заявке!';
-                        break;
+                        $hasData = false;
                 }
+            } else {
+                $hasData = false;
             }
 
-            $result = Request::sendMessage($data);
-
+            $result = false;
+            
+            if($hasData) $result = Request::sendMessage($data);
+            
             return $result;
         });
     }
@@ -352,6 +367,14 @@ class Ticket extends \CommonDBTM {
                     //$field = $ticket->getNextInput($user->fields['users_id']);
                     $data['text'] = $nextInput['request_translation'];
                     unset($data['reply_markup']);
+                    if(!$nextInput['is_mandatory']) {
+                        $data['reply_markup'] = new InlineKeyboard([
+                            [
+                                'text' => 'Пропустить', 
+                                'callback_data' => 'action=skip_field&users_id='.$user->fields['users_id'].'&field='.$nextInput['id']
+                            ]
+                        ]);
+                    }
                     if($tempData = $this->getInputInfo($nextInput, $data, $user)) {
                         $data = $tempData;
                     }
@@ -395,7 +418,7 @@ class Ticket extends \CommonDBTM {
             if(!$field['is_mandatory']) {
                 $data['reply_markup'] = new InlineKeyboard([
                     [
-                        'text' => 'Продолжить создание', 
+                        'text' => 'Пропустить', 
                         'callback_data' => 'action=skip_field&users_id='.$user->fields['users_id'].'&field='.$field['id']
                     ]
                 ]);
@@ -584,57 +607,43 @@ class Ticket extends \CommonDBTM {
 
     public function addFile($message) {
         if (in_array($message->getType(), ['audio', 'document', 'photo', 'video', 'voice'])) {
-            print_r(' TYPE: '.$message->getType().'<br>');
             // добавление документа в заявку
-            print_r(' DOCUMENT: <br>');
             if($message->getType() == 'document') {
                 $document = $message->getDocument();
                 $fileId = $document->getFileId();
                 $fileName = $document->getFileName();
-                print_r($fileId);
                 $docID = self::downloadFile($fileId, $fileName);
-                print_r('<br> DocID3: ');
-                print_r($docID);
                 return $docID;
             }
             
             // добавление фото в заявку
-            print_r(' PHOTO: <br>');
             if($message->getType() == 'photo') {
                 $photoArray = $message->getPhoto();
-                print_r($photoArray);
                 $fileId = end($photoArray)->getFileId();
-                print_r($fileId);
                 return self::downloadFile($fileId);
             }
             
             // добавление видео в заявку
-            print_r(' VIDEO: <br>');
             if($message->getType() == 'video') {
                 $video = $message->getVideo();
                 $fileId = $video->getFileId();
                 $fileName = $video->getFileName();
-                print_r($fileId);
                 return self::downloadFile($fileId, $fileName);
             }
 
             // добавление аудио в заявку
-            print_r(' AUDIO: <br>');
             if($message->getType() == 'audio') {
                 $audio = $message->getAudio();
                 $fileId = $audio->getFileId();
                 $fileName = $audio->getFileName();
-                print_r($fileId);
                 return self::downloadFile($fileId, $fileName);
             }
 
             // добавление голосового сообщения в заявку
-            print_r(' VOICE: <br>');
             if($message->getType() == 'voice') {
                 $voice = $message->getVoice();
                 $fileId = $voice->getFileId();
                 $fileName = $voice->getFileName();
-                print_r($fileId);
                 return self::downloadFile($fileId, $fileName);
             }
         }
@@ -648,10 +657,8 @@ class Ticket extends \CommonDBTM {
                 return false;
             }
             $filePath = $file->getFilePath();
-            //print_r($filePath);
             $tag = \Rule::getUuid();
             if($fileName == '') $fileName = mb_substr($filePath, strpos($filePath, '/') + 1);
-            //print_r($fileName);
             $prefix = uniqid("", true);
             rename(GLPI_TMP_DIR.'/'.$filePath, GLPI_TMP_DIR.'/'.$prefix.$fileName);
 
@@ -661,8 +668,6 @@ class Ticket extends \CommonDBTM {
             $input['_prefix_filename'] = [$prefix];
             $doc = new \Document();
             $docID = $doc->add($input);
-            //print_r('<br> DocID: ');
-            //print_r($docID);
             return $docID;
             
         }
