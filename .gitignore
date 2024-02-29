@@ -1,0 +1,7 @@
+.vscode/*
+*.ini
+*.log
+*.so
+*.sh
+*.txt
+vendor/*
