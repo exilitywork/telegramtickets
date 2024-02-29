@@ -33,7 +33,7 @@ error_reporting(E_ALL);
 
 use GlpiPlugin\Telegramtickets\Telegram;
 
-require_once 'vendor/autoload.php';
-include (__DIR__."/../../inc/includes.php");
+require_once '../vendor/autoload.php';
+include (__DIR__."/../../../inc/includes.php");
 
 Telegram::listen();
