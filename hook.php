@@ -28,6 +28,8 @@
  * -------------------------------------------------------------------------
  */
 
+use GlpiPlugin\Telegramtickets\User;
+
 /**
  * Plugin install process
  *
@@ -58,4 +60,12 @@ function plugin_telegramtickets_uninstall() {
     //if(!$DB->runFile(GLPI_ROOT . "/plugins/etn/sql/uninstall.sql")) die("SQL error");  
 
     return true;
+}
+
+function plugin_telegramtickets_hook_post_item_form(array $params) {
+    $item = $params['item'];
+
+    if (in_array($item->getType(), ['User', 'Preference'])) {
+        User::showUsernameField($params);
+    }
 }

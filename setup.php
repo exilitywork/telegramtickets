@@ -56,7 +56,9 @@ function plugin_init_telegramtickets()
     $PLUGIN_HOOKS['menu_toadd']['telegramtickets'] = $menu;
 
     $PLUGIN_HOOKS[Hooks::ITEM_ACTION_TARGETS]['telegramtickets'] = ['NotificationTargetTicket' => ['GlpiPlugin\Telegramtickets\Ticket', 'addTargets']];
-
+    $PLUGIN_HOOKS[Hooks::POST_SHOW_TAB]['telegramtickets'] = ['GlpiPlugin\Telegramtickets\User', 'showUsernameField'];
+    $PLUGIN_HOOKS[Hooks::POST_ITEM_FORM]['telegramtickets'] = 'plugin_telegramtickets_hook_post_item_form';
+    $PLUGIN_HOOKS[Hooks::ITEM_UPDATE]['telegramtickets'] = ['User' => ['GlpiPlugin\Telegramtickets\User', 'cleanUsername']];
 }
 
 /**

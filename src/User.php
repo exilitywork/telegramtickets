@@ -194,4 +194,72 @@ class User extends \CommonDBTM {
         });
     }
 
+    static function showUsernameField($params) {
+        global $DB;
+
+        $item = $params['item'];
+        $options = $params['options'];
+
+        if(isset($_REQUEST['_glpi_tab']) && ($_REQUEST['_glpi_tab'] == 'User$1' || $_REQUEST['_glpi_tab'] == 'User$main')) {
+            $username = '';
+            $tgID = '';
+            $id = null;
+            $isPref = false;
+            if ($item->getType() == 'Preference' && $options['itemtype'] == 'User') {
+                $id = \Session::getLoginUserID();
+                $isPref = true;
+            }
+            if ($item->getType() == 'User' && $item->fields['id']) $id = $item->fields['id'];
+            if($id) {
+                $user = new self();
+                if($u = current($user->find(['users_id' => $id], [], 1))) {
+                    $tgID = $u['id'];
+                    $iterator = $DB->request([
+                        'SELECT'    => [
+                            'glpi_plugin_telegramtickets_user.id AS id',
+                            'glpi_plugin_telegramtickets_user.username AS username'
+                        ],
+                        'DISTINCT'  => true,
+                        'FROM'      => 'glpi_plugin_telegramtickets_user',
+                        'WHERE'     => [
+                            'glpi_plugin_telegramtickets_user.id' => $u['id']
+                        ]
+                    ]);
+                    foreach($iterator as $tgUser) {
+                        $username = $tgUser['username'];
+                    }
+                }
+                
+                $out = '';
+                if($isPref) $out .= '<form method="post" name="user_manager" enctype="multipart/form-data" action="/front/preference.php" autocomplete="off">';
+                $out .= '<table class="tab_cadre_fixe" style="width: auto;">';
+                $out .= '<tr class="tab_bg_1" style="border: 2px rgb(135, 170, 138) solid; border-radius: 4px; display: block;">';
+                $out .= '<td><strong>Telegram Tickets: </strong>'.__('Имя пользователя Telegram', 'telegramtickets').'</td>';
+                $out .= '<td>'.($username ? $username : '<отсутствует>').'</td>';
+                if($username) {
+                    $out .= '<td>
+                        <input type="hidden" name="delete_username" value="'.$tgID.'">
+                        <input type="hidden" name="date_mod" value="'.date('Y-m-d H:i:s').'">
+                        <input type="hidden" name="_glpi_csrf_token" value="'.\Session::getNewCSRFToken().'">
+                        <input type="hidden" name="id" value="'.$id.'">
+                        <button class="btn btn-danger me-2" type="submit" name="update" value="2">Очистить</button></td>
+                    ';
+                }
+                $out .= '</tr>';
+                $out .= '</table>';
+                if($isPref) $out .= '</form>';
+
+                echo $out;
+            }
+        }
+    }
+
+    static function cleanUsername(\User $item) {
+        if($item->input['_update'] == 2) {
+            $user = new self();
+            $user->getFromDB($item->input['delete_username']);
+            $user->deleteFromDB();
+        };
+    }
+
 }
