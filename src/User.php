@@ -255,7 +255,7 @@ class User extends \CommonDBTM {
     }
 
     static function cleanUsername(\User $item) {
-        if($item->input['_update'] == 2) {
+        if(isset($item->input['_update']) && $item->input['_update'] == 2) {
             $user = new self();
             $user->getFromDB($item->input['delete_username']);
             $user->deleteFromDB();

@@ -408,7 +408,7 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_telegramtickets_tickets` (
 
 CREATE TABLE IF NOT EXISTS `glpi_plugin_telegramtickets_users` (
     `id` bigint UNSIGNED NOT NULL,
-    `users_id` INT UNSIGNED NOT NULL,
+    `users_id` INT UNSIGNED,
     `is_authorized` INT(1) DEFAULT 0,
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
