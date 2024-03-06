@@ -89,6 +89,7 @@ class Telegram extends \CommonDBTM
             // Handle telegram getUpdates request
             $serverResponse = $telegram->handleGetUpdates();
             if ($serverResponse->isOk()) {
+                $chatIDs = [];
                 $updates = $serverResponse->getResult();
                 foreach($updates as $update) {
                     //print_r('-------- Telegram.php 220<br>');
@@ -103,6 +104,10 @@ class Telegram extends \CommonDBTM
                         if($text == '/start') continue;
                         
                         $chatId = $update->getMessage()->getChat()->getId();
+
+                        // прерывание цикла для обработки только первого поступившего сообщения от пользователя
+                        if(in_array($chatId, $chatIDs)) break;
+                        array_push($chatIDs, $chatId);
 
                         $data = [
                             'chat_id'      => $chatId,
@@ -274,9 +279,6 @@ class Telegram extends \CommonDBTM
                         }
 
                         Request::sendMessage($data);
-
-                        // прерывание цикла для обработки только первого поступившего сообщения
-                        break;
                     }
                 }
             } else {
