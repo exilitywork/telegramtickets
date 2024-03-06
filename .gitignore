@@ -4,4 +4,12 @@
 *.so
 *.sh
 *.txt
-vendor/*
+!/vendor/
+/vendor/*
+!/vendor/longman/
+/vendor/longman/*
+!/vendor/longman/telegram-bot/
+/vendor/longman/telegram-bot/*
+!/vendor/longman/telegram-bot/src
+/vendor/longman/telegram-bot/src/*
+!/vendor/longman/telegram-bot/src/Commands
