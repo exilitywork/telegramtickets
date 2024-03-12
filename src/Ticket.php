@@ -177,9 +177,10 @@ class Ticket extends \CommonDBTM {
             ];
                         
             // проверка количества найденных незаконченных заявок
-            if(count($tickets) > 1) {
+            /*if(count($tickets) > 1) {
                 $data['text'] = 'Найдено несколько незаконченных заявок! Обратитесь к администратору!';
-            } elseif(count($tickets)) {
+            } else*/
+            if(count($tickets)) {
                 // обработка команд
                 $ticket->getFromDB(current($tickets)['id']);
                 switch($params['action']) {
