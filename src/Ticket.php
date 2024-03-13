@@ -565,13 +565,13 @@ class Ticket extends \CommonDBTM {
         }
         if($offset < $count && $count > 10) {
             $buttons[] = new InlineKeyboardButton([
-                'text'          => 'Следующие 5 категорий из '.$count,
+                'text'          => 'Следующие 10 категорий из '.$count,
                 'callback_data' => 'action=next_categories&users_id='.$user->fields['users_id'].'&offset='.($offset + 10).'&is_mandatory='.$isMandatory,
             ]);
         }
         if($offset && $count > 10) {
             $buttons[] = new InlineKeyboardButton([
-                'text'          => 'Предыдущие 5 категорий из '.$count,
+                'text'          => 'Предыдущие 10 категорий из '.$count,
                 'callback_data' => 'action=prev_categories&users_id='.$user->fields['users_id'].'&offset='.($offset - 10).'&is_mandatory='.$isMandatory,
             ]);
         }
