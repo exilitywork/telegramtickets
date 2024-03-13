@@ -232,12 +232,12 @@ class Telegram extends \CommonDBTM
                                         $ticket->updateInDB(array_keys($ticket->fields));
                                     }
                                 }
-                                // получение следующего поля для заполнения
+                                // если текущее поле "Категория", то извлекаем текст для поиска
                                 $searchText = '';
                                 if($field['id'] == 7) {
                                     $searchText = $text;
                                 }
-
+                                // получение следующего поля для заполнения
                                 if($field = $ticket->getNextInput($user->fields['users_id'])) {
                                     if($field === true) { // если все поля заполнены
                                         $data['text'] = 'Все поля заявки заполнены!'.PHP_EOL;
@@ -264,8 +264,8 @@ class Telegram extends \CommonDBTM
                                                     'callback_data' => 'action=skip_field&users_id='.$user->fields['users_id'].'&field='.$field['id']
                                                 ]
                                             ]);
-                                        }
-                                        if($tempData = $ticket->getInputInfo($field, $data, $user)) {
+                                        }print_r($searchText);
+                                        if($tempData = $ticket->getInputInfo($field, $data, $user, $searchText)) {
                                             $data = $tempData;
                                         }
                                     }

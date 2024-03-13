@@ -220,12 +220,12 @@ class Ticket extends \CommonDBTM {
                     case 'prev_categories':
                     case 'next_categories':
                         $data['text'] = 'Выберите категорию заявки';
-                        $data = $ticket->getCategories($data, $user, $params['offset']);
+                        $data = $ticket->getCategories($data, $user, $params['offset'], '',  $params['is_mandatory']);
                         break;
                     // поиск категории
                     case 'reset_categories':
                         $data['text'] = 'Выберите категорию заявки';
-                        $data = $ticket->getCategories($data, $user);
+                        $data = $ticket->getCategories($data, $user, 0, '', $params['is_mandatory']);
                         break;
                     // установка поля "Статус"
                     case 'set_status':
@@ -566,20 +566,20 @@ class Ticket extends \CommonDBTM {
         if($offset < $count && $count > 5) {
             $buttons[] = new InlineKeyboardButton([
                 'text'          => 'Следующие 5 категорий из '.$count,
-                'callback_data' => 'action=next_categories&users_id='.$user->fields['users_id'].'&offset='.($offset + 5),
+                'callback_data' => 'action=next_categories&users_id='.$user->fields['users_id'].'&offset='.($offset + 5).'&is_mandatory='.$isMandatory,
             ]);
         }
         if($offset && $count > 5) {
             $buttons[] = new InlineKeyboardButton([
                 'text'          => 'Предыдущие 5 категорий из '.$count,
-                'callback_data' => 'action=prev_categories&users_id='.$user->fields['users_id'].'&offset='.($offset - 5),
+                'callback_data' => 'action=prev_categories&users_id='.$user->fields['users_id'].'&offset='.($offset - 5).'&is_mandatory='.$isMandatory,
             ]);
         }
         if($searchText && $count) {
             $data['text'] = 'По запросу "'.$searchText.'" найдены следующие категории Ticket.php 549';
             $buttons[] = new InlineKeyboardButton([
                 'text'          => 'Весь список',
-                'callback_data' => 'action=reset_categories&users_id='.$user->fields['users_id'],
+                'callback_data' => 'action=reset_categories&users_id='.$user->fields['users_id'].'&is_mandatory='.$isMandatory,
             ]);
         }
         if($searchText && $count == 0) {
@@ -733,7 +733,7 @@ class Ticket extends \CommonDBTM {
     }
 
     // получение вариантов ввода для поля
-    public function getInputInfo($field, $data, $user) {
+    public function getInputInfo($field, $data, $user, $searchText = '') {
         switch($field['id']) {
             case 3:
                 return $this->getButtons('priority', self::PRIORITY, $data, $user, $field['is_mandatory']);
@@ -745,7 +745,7 @@ class Ticket extends \CommonDBTM {
                 return $this->getButtons('impact', self::IMPACT, $data, $user, $field['is_mandatory']);
                 break;
             case 7:
-                return $this->getCategories($data, $user, 0, '', $field['is_mandatory']);
+                return $this->getCategories($data, $user, 0, $searchText, $field['is_mandatory']);
                 break;
             case 12:
                 return $this->getStatuses($data, $user, $field['is_mandatory']);
