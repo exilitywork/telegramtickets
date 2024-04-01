@@ -155,6 +155,7 @@ class Ticket extends \CommonDBTM {
             $messageId = $query->getMessage()->getMessageId();
 
             $hasData = true;
+            $tickets = [];
             
             /** в params парсятся параметры, заданные в инлайн клавиатуре
               *
@@ -258,6 +259,8 @@ class Ticket extends \CommonDBTM {
                         $useNotification = 1;
                         $userEmail = current((new \UserEmail)->find(['users_id' => $params['users_id'], 'is_default' => 1]))['email'];
                         if(!$userEmail) $useNotification = 0;
+                        $userGLPI = new \User;
+                        $userGLPI->getFromDB($params['users_id']);
                         $ticketGLPI = new \Ticket;
                         foreach($tickets as $fields) {
                             // удаление полей со значением NULL
@@ -276,6 +279,7 @@ class Ticket extends \CommonDBTM {
                             $fields['id'] = 0;
                             $fields['users_id_lastupdater'] = $ticket->fields['users_id'];
                             $fields['_glpi_csrf_token'] = \Session::getNewCSRFToken();
+                            $fields['entities_id'] = $userGLPI->fields['entities_id'];
                             //print_r($fields);
 
                             // создание заявки в GLPI
@@ -560,8 +564,6 @@ class Ticket extends \CommonDBTM {
                 'text'          => $row['name'],
                 'callback_data' => 'action=set_category&users_id='.$user->fields['users_id'].'&itilcategories_id='.$id,
             ]);
-            //$row['number'] = $id + 1;
-            //array_push($categories, $row);
         }
         if($offset < $count && $count > 10) {
             $buttons[] = new InlineKeyboardButton([
