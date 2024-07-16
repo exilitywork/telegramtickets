@@ -58,7 +58,15 @@ function plugin_init_telegramtickets()
     $PLUGIN_HOOKS[Hooks::ITEM_ACTION_TARGETS]['telegramtickets'] = ['NotificationTargetTicket' => ['GlpiPlugin\Telegramtickets\Ticket', 'addTargets']];
     $PLUGIN_HOOKS[Hooks::POST_SHOW_TAB]['telegramtickets'] = ['GlpiPlugin\Telegramtickets\User', 'showUsernameField'];
     $PLUGIN_HOOKS[Hooks::POST_ITEM_FORM]['telegramtickets'] = 'plugin_telegramtickets_hook_post_item_form';
-    $PLUGIN_HOOKS[Hooks::ITEM_UPDATE]['telegramtickets'] = ['User' => ['GlpiPlugin\Telegramtickets\User', 'cleanUsername']];
+    $PLUGIN_HOOKS[Hooks::ITEM_UPDATE]['telegramtickets'] = [
+        'User' => ['GlpiPlugin\Telegramtickets\User', 'cleanUsername'], 
+        'TicketValidation' => ['GlpiPlugin\Telegramtickets\Validation', 'addItem'],
+        'Ticket' => ['GlpiPlugin\Telegramtickets\Ticket', 'updateItem'],
+        'Ticket_User' => ['GlpiPlugin\Telegramtickets\Ticket', 'updateItem']
+    ];
+    $PLUGIN_HOOKS[Hooks::ITEM_ADD]['telegramtickets'] = ['TicketValidation' => ['GlpiPlugin\Telegramtickets\Validation', 'addItem']];
+    $PLUGIN_HOOKS[Hooks::ITEM_ADD]['telegramtickets'] += ['Ticket' => ['GlpiPlugin\Telegramtickets\Ticket', 'addItem']];
+    $PLUGIN_HOOKS[Hooks::ITEM_ADD]['telegramtickets'] += ['ITILFollowup' => ['GlpiPlugin\Telegramtickets\Ticket', 'addFollowup']];
 }
 
 /**

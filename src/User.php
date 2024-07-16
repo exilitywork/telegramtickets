@@ -32,6 +32,7 @@ namespace GlpiPlugin\Telegramtickets;
 
 use Longman\TelegramBot\Commands\SystemCommands\CallbackqueryCommand;
 use Longman\TelegramBot\Entities\InlineKeyboard;
+use Longman\TelegramBot\Entities\InlineKeyboardButton;
 use Longman\TelegramBot\Request;
 use Longman\TelegramBot\Entities\Keyboard;
 
@@ -50,6 +51,7 @@ class User extends \CommonDBTM {
         $iterator = $DB->request([
             'SELECT'    => [
                 'glpi_users.id AS id',
+                'glpi_users.name AS name',
                 'glpi_users.realname AS realname',
                 'glpi_users.firstname AS firstname',
                 'glpi_users.entities_id',
@@ -82,7 +84,7 @@ class User extends \CommonDBTM {
         return $user;
     }
 
-    public static function getUsers($name) {
+    public static function getUsers($name = '') {
         global $DB;
         $iterator = $DB->request([
             'SELECT'    => [
@@ -127,10 +129,10 @@ class User extends \CommonDBTM {
               *
               * например:
               *  $data['reply_markup'] = ['inline_keyboard' => [ 
-              *     [ [ "text" => "Включить звук", "callback_data" => "action=sound&value=1" ] ]
+              *     [ [ "text" => "Включить звук", "callback_data" => "cmd=sound&value=1" ] ]
               *  ];
               **/    
-            //print_r($query->getData());
+            print_r($query->getData());
             parse_str($query->getData(), $params);
          
             $data = [
@@ -139,25 +141,26 @@ class User extends \CommonDBTM {
             ];
 
             // загрузка информации о пользователе из БД
-            if(isset($params['users_id'])) {
-                $user = self::getUser($params['users_id']);
+            $userTg = new self;
+            $userTg->getFromDB($chatId);
+            //print_r(!$userTg->isNewItem());
+            if(isset($params['user'])) {
+                $user = self::getUser($params['user']);
                     if($user) {
-                        $userTg = new self;
-                        $userTg->getFromDB($chatId);
                         $userTg->fields['id'] = $chatId;
-                        $userTg->fields['users_id'] = $params['users_id'];
+                        $userTg->fields['users_id'] = $params['user'];
                     } else {
                         $data['text'] = 'Пользователь не найден! Попробуйте ещё раз';
                     }
             }
 
             // обработка комманд
-            switch($params['action']) {
+            switch($params['cmd']) {
                 case 'set_user_id':
                     $data['text'] = 'Выбран пользователь: '.$user['realname'].' '.$user['firstname'].' ('.$user['entity'].')';
                     $data['reply_markup'] = new InlineKeyboard([
-                        ['text' => 'Подтвердить', 'callback_data' => 'action=confirm_user&users_id='.$params['users_id']],
-                        ['text' => 'Отменить', 'callback_data' => 'action=cancel_user']
+                        ['text' => 'Подтвердить', 'callback_data' => 'cmd=confirm_user&user='.$params['user']],
+                        ['text' => 'Отменить', 'callback_data' => 'cmd=cancel_user']
                     ]);
                     break;
                 case 'incorrect_family':
@@ -165,21 +168,38 @@ class User extends \CommonDBTM {
                     $data['text'] = 'Введите вашу фамилию';
                     break;
                 case 'confirm_user':
+                    $userTg->fields['is_authorized'] = 1;
                     if(!$userTg->isNewItem()) {
                         $userTg->updateInDB(array_keys($userTg->fields));
                     } else {
                         $userTg->addToDB();
                     }
                     $data['text'] = 'Пользователь успешно сохранён: '.$user['realname'].' '.$user['firstname'].' ('.$user['entity'].').';
-                    $data['text'] .= PHP_EOL.'Теперь вы можете создать заявку. Для этого нажмите кнопку "Создать заявку"';
-                    $data['reply_markup'] = new Keyboard([
-                        'keyboard' => [
-                            ['Создать заявку']
-                        ], 
-                        'resize_keyboard' => true,
-                        'selective' => true
-                    ]);
+                    if(file_exists(__DIR__.'/../mode') && file_get_contents(__DIR__.'/../mode') == 1) {
+                        $data['text'] .= PHP_EOL.'Теперь вы можете создать заявку. Для этого нажмите кнопку "Создать заявку"';
+                        $data['reply_markup'] = new Keyboard([
+                            'keyboard' => [
+                                ['Создать заявку']
+                            ], 
+                            'resize_keyboard' => true,
+                            'selective' => true
+                        ]);
+                    } else {
+
+                    }
                     // TODO: обработка неудачного сохранения
+                    break;
+                case 'set_authtype':
+                    if(isset($params['authtype'])) {
+                        $userTg->fields['authtype'] = $params['authtype'];
+                        if(!$userTg->isNewItem()) {
+                            $userTg->updateInDB(array_keys($userTg->fields));
+                        } else {
+                            $userTg->fields['id'] = $chatId;
+                            $userTg->addToDB();
+                        }
+                    }
+                    $data['text'] = 'Введите имя пользователя';
                     break;
                 default:
                     $hasData = false;
@@ -255,11 +275,53 @@ class User extends \CommonDBTM {
     }
 
     static function cleanUsername(\User $item) {
+        //die();
         if(isset($item->input['_update']) && $item->input['_update'] == 2) {
             $user = new self();
             $user->getFromDB($item->input['delete_username']);
             $user->deleteFromDB();
         };
+    }
+
+    static function getAuthTypesButtons($data) {
+        $buttons = [];
+        $auth = new \Auth;
+        $authtypes = $auth->getLoginAuthMethods();
+        unset($authtypes['_default']);
+        foreach($authtypes as $authtype => $authName) {
+            $buttons[] = new InlineKeyboardButton([
+                'text'          => $authName,
+                'callback_data' => 'cmd=set_authtype&authtype='.$authtype,
+            ]);
+        }
+        
+        $data['text'] = 'Выберите тип авторизации';
+        $data['reply_markup'] = Telegram::verticalInlineKeyboard($buttons);
+
+        return $data;
+    }
+
+    static function getAuthTypeAndId($login_auth) {
+        $auth = [];
+        $auth['auth_id'] = 0;
+        if ($login_auth == 'local') {
+            $auth['authtype'] = \Auth::DB_GLPI;
+        } else if (preg_match('/^(?<type>ldap|mail|external)-(?<id>\d+)$/', $login_auth, $auth_matches)) {
+            $auth['auth_id'] = (int)$auth_matches['id'];
+            if ($auth_matches['type'] == 'ldap') {
+                $auth['authtype'] = \Auth::LDAP;
+            } else if ($auth_matches['type'] == 'mail') {
+                $auth['authtype'] = \Auth::MAIL;
+            } else if ($auth_matches['type'] == 'external') {
+                $auth['authtype'] = \Auth::EXTERNAL;
+            }
+        }
+        return $auth;
+    }
+
+    public function setState($state) {
+        $this->fields['state'] = $state;
+        return $this->updateInDB(array_keys($this->fields));
     }
 
 }

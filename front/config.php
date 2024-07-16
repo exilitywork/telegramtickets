@@ -31,6 +31,7 @@
 use Glpi\Application\View\TemplateRenderer;
 use GlpiPlugin\Telegramtickets\Config;
 use GlpiPlugin\Telegramtickets\Field;
+use GlpiPlugin\Telegramtickets\Validation_Field;
 
 global $CFG_GLPI, $DB;
 
@@ -67,6 +68,20 @@ if(!empty($_POST) && isset($_POST['add_field'])) {
 if(!empty($_REQUEST) && isset($_REQUEST['delete_field'])) {
     $field = new Field;
     $field->deleteByCriteria(['id' => $_REQUEST['delete_field']]);
+}
+
+// add or delete validations fields
+if(!empty($_POST) && isset($_POST['add_validation_field'])) {
+    $field = new Validation_Field;
+    $field->fields['fields_id'] = $_POST['fields_id'];
+    $field->fields['itemtype'] = $_POST['itemtype'];
+    if(!(current($field->find(['fields_id' => $_POST['fields_id'], 'itemtype' => $_POST['itemtype']], [], 1)))) {
+        $field->addToDB();
+    }
+}
+if(!empty($_REQUEST) && isset($_REQUEST['delete_validation_field'])) {
+    $field = new Validation_Field;
+    $field->deleteByCriteria(['id' => $_REQUEST['delete_validation_field']]);
 }
 
 // add or delete users for SLA notify

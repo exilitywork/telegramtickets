@@ -11,7 +11,9 @@
 
 namespace Longman\TelegramBot\Commands\UserCommands;
 
+use GlpiPlugin\Telegramtickets\User;
 use Longman\TelegramBot\Commands\UserCommand;
+use Longman\TelegramBot\Entities\InlineKeyboard;
 use Longman\TelegramBot\Entities\ServerResponse;
 use Longman\TelegramBot\Request;
 use Longman\TelegramBot\Entities\Keyboard;
@@ -68,13 +70,37 @@ class StartCommand extends UserCommand
         ];
 
         // проверка авторизации пользователя
-        $user = $user->checkAuth($chat_id);
-        if(!$user) {
-            $data['text'] = 'Для доступа к заявкам наберите пароль';
-            unset($data['reply_markup']);
-        } elseif(is_null($user['users_id'])) {
-            $data['text'] = 'Введите вашу фамилию';
-            unset($data['reply_markup']);
+        //$user = $user->checkAuth($chat_id);
+        //$user->getFromDB($chat_id);
+        if(file_exists(__DIR__.'/../../../../../../mode') && file_get_contents(__DIR__.'/../../../../../../mode') == 1) {
+            if(!$user->getFromDB($chat_id)) {
+                $data['text'] = 'Для доступа к заявкам наберите пароль';
+                unset($data['reply_markup']);
+            } elseif(is_null($user->fields['users_id']) && $user->fields['is_authorized']) {
+                $data['text'] = 'Введите вашу фамилию';
+                unset($data['reply_markup']);
+            }
+        } else {
+            $data['text'] = 'test';
+            if(!$user->getFromDB($chat_id)) {echo 333;
+                $data = User::getAuthTypesButtons($data);
+                /*$inline_keyboard = new InlineKeyboard([
+                    ['text' => 'Подтвердить', 'callback_data' => 'action=confirm_user&users_id='.$user->fields['users_id']],
+                                                ['text' => 'Отменить', 'callback_data' => 'action=cancel_user']
+                    ['text' => 'callback', 'callback_data' => 'identifier222'],
+                ], [
+                    ['text' => 'callback', 'callback_data' => 'identifier222'],
+                ]);
+                $data['text'] = 'Введите имя пользователя';
+                //unset($data['reply_markup']);
+                $data['reply_markup'] = $inline_keyboard;*/
+            } elseif(is_null($user->fields['users_id'])) {
+                $data['text'] = 'Введите имя пользователя';
+                unset($data['reply_markup']);
+            } elseif(empty($user->fields['is_authorized'])) {
+                $data['text'] = 'Введите пароль';
+                unset($data['reply_markup']);
+            }
         }
         //$switch_element = mt_rand(0, 9) < 5 ? 'true' : 'false';
         /*$inline_keyboard = new InlineKeyboard([

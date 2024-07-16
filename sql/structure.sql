@@ -410,6 +410,8 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_telegramtickets_users` (
     `id` bigint UNSIGNED NOT NULL,
     `users_id` INT UNSIGNED,
     `is_authorized` INT(1) DEFAULT 0,
+    `authtype` VARCHAR(255),
+    `state` VARCHAR(255),
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
@@ -418,5 +420,12 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_telegramtickets_configs`
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `option` VARCHAR(255) NOT NULL,
     `value` VARCHAR(255),
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
+
+CREATE TABLE IF NOT EXISTS `glpi_plugin_telegramtickets_validations_fields` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `fields_id` INT NOT NULL,
+    `itemtype` VARCHAR(255) NOT NULL,
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;

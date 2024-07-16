@@ -49,6 +49,18 @@ use Longman\TelegramBot\Telegram as TelegramBot;
 
 class Telegram extends \CommonDBTM
 {
+    protected TelegramBot $telegram;
+
+    function __construct() {
+        try {
+            $config = Config::getConfig();
+            $telegram = new TelegramBot($config['bot_token'], $config['bot_username']);
+        } catch (TelegramException $e) {
+            // log telegram errors
+            echo $e->getMessage();
+            die();
+        }
+    }
 
     /**
      * Get typename
@@ -59,6 +71,16 @@ class Telegram extends \CommonDBTM
     **/
     static function getTypeName($nb = 0) {
         return __('Telegram', 'telegramtickets');
+    }
+
+    public function send($data) {
+        try {
+            Request::sendMessage($data);
+        } catch (TelegramException $e) {
+            // log telegram errors
+            echo $e->getMessage();
+            die();
+        }
     }
 
     static function listen() {
@@ -109,45 +131,129 @@ class Telegram extends \CommonDBTM
                         if(in_array($chatId, $chatIDs)) break;
                         array_push($chatIDs, $chatId);
 
+                        $ticket = new Ticket;
+                        $user = new User;
+                        $user->getFromDB($chatId);
+                        $isNewUser = $user->isNewItem();
+
+                        // обработка сохраненных комманд
+                        if(!empty($user->fields['state'] && $text != 'Создать заявку' && $text != 'Список заявок')) {
+                            $query['chat_id'] = $chatId;
+                            $query['data'] = $user->fields['state'];
+                            $query['text'] = $text;
+                            $query['message'] = $message;
+                            Ticket::handleQuery($query);
+                            continue;
+                        }
+
                         $data = [
                             'chat_id'      => $chatId,
                             'text'         => 'Здравствуйте! Для того, чтобы cоздать новую заявку нажмите кнопку "Создать заявку". Если кнопки нет, то нажмите /start',
                             'reply_markup' => new Keyboard([
                                 'keyboard' => [
-                                    ['Создать заявку']
+                                    ['Создать заявку'],
+                                    ['Список заявок']
                                 ], 
                                 'resize_keyboard' => true,
                                 'selective' => true
                             ])
                         ];
                         
-                        $ticket = new Ticket;
-                        $user = new User;
-                        $user->getFromDB($chatId);
-                        $isNewUser = $user->isNewItem();
-
                         // проверка авторизации пользователя
-                        if(empty($user->fields['is_authorized'])) {
-                            $data['text'] = 'Для доступа к заявкам наберите пароль';
-                            if($text == $config['bot_password']) {
-                                $user->fields['id'] = $chatId;
-                                $user->fields['is_authorized'] = 1;
-                                //print_r('+++++++++++ Telegram.php 273<br>');
-                                //print_r($isNewUser);
-                                //print_r('<br>+++++++++++++ Telegram.php<br>');
-                                if(!$isNewUser) {
-                                    $user->updateInDB(array_keys($user->fields));
-                                    //print_r("+++++++++++++++++++++++++++++++++++++++++++++++++++++ Telegram.php");
-                                } else {
-                                    $user->addToDB();
-                                    //print_r("******************************************************* Telegram.php");
-                                }
-                                $data['text'] = 'Пароль верный! Введите вашу фамилию';
-                            } else {
-                                $data['text'] = 'Пароль неверный! Для доступа к заявкам введите правильный пароль';
-                                if($text == 'Создать заявку') $data['text'] = 'Для доступа к заявкам введите правильный пароль';
-                            }
+                        if(empty($user->fields['is_authorized'])) { 
                             unset($data['reply_markup']);
+                            if(file_exists(__DIR__.'/../mode') && file_get_contents(__DIR__.'/../mode') == 1) { // авторизация по единому паролю
+                                $data['text'] = 'Для доступа к заявкам наберите пароль';
+                                if($text == $config['bot_password']) {
+                                    $user->fields['id'] = $chatId;
+                                    $user->fields['is_authorized'] = 1;
+                                    //print_r('+++++++++++ Telegram.php 273<br>');
+                                    //print_r($isNewUser);
+                                    //print_r('<br>+++++++++++++ Telegram.php<br>');
+                                    if(!$isNewUser) {
+                                        $user->updateInDB(array_keys($user->fields));
+                                        //print_r("+++++++++++++++++++++++++++++++++++++++++++++++++++++ Telegram.php");
+                                    } else {
+                                        $user->addToDB();
+                                        //print_r("******************************************************* Telegram.php");
+                                    }
+                                    $data['text'] = 'Пароль верный! Введите вашу фамилию';
+                                } else {
+                                    $data['text'] = 'Пароль неверный! Для доступа к заявкам введите правильный пароль';
+                                    if($text == 'Создать заявку') $data['text'] = 'Для доступа к заявкам введите правильный пароль';
+                                }
+                                //unset($data['reply_markup']);
+                            } else { // авторизация по логину и паролю
+                                if(empty($user->fields['users_id'])) {
+                                    $data['text'] = 'Введите имя пользователя';
+                                    $userGLPI = new \User;
+                                    //print_r($user->getAuthTypeAndId($user->fields['authtype']));
+                                    $auth = $user->getAuthTypeAndId($user->fields['authtype']);
+                                    if($userGLPI->getFromDBbyNameAndAuth($text, $auth['authtype'], $auth['auth_id']) && $userGLPI->fields['is_active'] && !$userGLPI->fields['is_deleted']) {
+                                        echo '<pre>';
+                                        print_r($userGLPI);
+                                        $user->fields['id'] = $chatId;
+                                        $user->fields['users_id'] = $userGLPI->fields['id'];
+                                        $user->fields['is_authorized'] = 0;
+                                        if(!$isNewUser) {
+                                            $user->updateInDB(array_keys($user->fields));
+                                        } else {
+                                            $user->addToDB();
+                                        }
+                                        $data['text'] = 'Введите пароль';
+                                    } else {
+                                        if(isset($userGLPI->fields['is_deleted']) && $userGLPI->fields['is_deleted']) {
+                                            $data['text'] = 'Пользователь с таким именем удален! Введите повторно имя пользователя';
+                                        } elseif(isset($userGLPI->fields['is_active']) && !$userGLPI->fields['is_active']) {
+                                            $data['text'] = 'Пользователь с таким именем отключен! Введите повторно имя пользователя';
+                                        } else {
+                                            $data['text'] = 'Пользователь с таким именем не найден! Введите повторно имя пользователя';
+                                        }                                       
+                                    }
+                                    //unset($data['reply_markup']);
+                                } else {
+                                    //$data['text'] = 'Введите пароль';
+                                    if($user->fields['is_authorized']) {
+                                        $data['text'] = '+++++';
+                                        //unset($data['reply_markup']);
+                                    } else {
+                                        //$data['text'] = '-----';
+                                        //$userGLPI = new \User;
+                                        //$userGLPI->getFromDB($user->fields['users_id']);
+                                        $userGLPI = User::getUser($user->fields['users_id']);
+                                        $auth = new \Auth;
+                                        $auth->login($userGLPI['name'], $text, 0, 0, $user->fields['authtype']);
+                                        //$data['text'] .= $auth->auth_succeded;
+                                        if($auth->auth_succeded) {
+                                            $data['text'] = 'Подтвердите авторизацию пользователя: '.$userGLPI['realname'].' '.$userGLPI['firstname'].' ('.$userGLPI['entity'].')';
+                                            $data['reply_markup'] = new InlineKeyboard([
+                                                ['text' => 'Подтвердить', 'callback_data' => 'cmd=confirm_user&user='.$user->fields['users_id']],
+                                                ['text' => 'Отменить', 'callback_data' => 'cmd=cancel_user']
+                                            ]);
+                                        } else {
+                                            $data['text'] = 'Пароль не верен. Попробуйте ещё раз';
+                                            unset($data['reply_markup']);
+                                        }
+                                        //print_r($auth->auth_succeded);
+                                    }
+                                    print_r($user);
+                                    /*if($userGLPI->getFromDBbyName($text)) {
+                                        $user->fields['id'] = $chatId;
+                                        $user->fields['users_id'] = $userGLPI->fields['id'];
+                                        $user->fields['is_authorized'] = 0;
+                                        if(!$isNewUser) {
+                                            $user->updateInDB(array_keys($user->fields));
+                                        } else {
+                                            $user->addToDB();
+                                        }
+                                    } else {
+                                        $data['text'] = 'Пользователь с таким именем не найден! Введите повторно имя пользователя';
+                                    }*/
+                                }
+                                
+                                
+                            }
+                            
                         // определение пользователя GLPI
                         } elseif(empty($user->fields['users_id'])) {
                             unset($data['reply_markup']);
@@ -163,30 +269,35 @@ class Telegram extends \CommonDBTM
                                     foreach($users as $user) {
                                         $keyboardButtons[] = new InlineKeyboardButton([
                                             'text'          => $user['realname'].' '.$user['firstname'].' ('.$user['entity'].')',
-                                            'callback_data' => 'action=set_user_id&users_id='.$user['id'],
+                                            'callback_data' => 'cmd=set_user_id&user='.$user['id'],
                                         ]);
                                     }
                                     $keyboardButtons[] = new InlineKeyboardButton([
                                         'text'          => 'Ввести фамилию повторно',
-                                        'callback_data' => 'action=incorrect_family&users_id='.$user['id'],
+                                        'callback_data' => 'cmd=incorrect_family&user='.$user['id'],
                                     ]);
-                                    
-                                    $inline_keyboard = new InlineKeyboard($keyboardButtons);
 
-                                    $keysV = [];
-                                    $keysH = $inline_keyboard->__get('inline_keyboard')[0];
-                                    foreach($keysH as $id => $key) {
-                                        $keysV[$id][0] = $key;
-                                    }
-
-                                    $inline_keyboard->__set('inline_keyboard', $keysV);
-
-                                    $data['reply_markup'] = $inline_keyboard;
+                                    $data['reply_markup'] = self::verticalInlineKeyboard($keyboardButtons);
                                 }
                             }
                         // обработка нажатия кнопки "Создать заявку"
                         } elseif($text == 'Создать заявку') {
                             $data = $ticket->create($data, $user);
+                        // обработка нажатия кнопки "Список заявок"
+                        } elseif($text == 'Список заявок') {
+                            $ticket = new Ticket;
+                            $tickets = $ticket->find(['users_id' => $user->fields['users_id']]);
+                            if(count($tickets)) {
+                                foreach($tickets as $t) {
+                                    $ticket->getFromDB($t['id']);
+                                    $ticket->deleteFromDB();
+                                    $ticket = new Ticket;
+                                }
+                            }
+                            $data['text'] = 'Список заявок:';
+                            $data = Ticket::getTickets($data, $user);
+                            //$data['text'] = 34656546456;
+                            //$data = $ticket->create($data, $user);
                         // обработка ввода данных заявки
                         } elseif($field = $ticket->getNextInput($user->fields['users_id'])) {
                             //print_r('<br> ************************** ');
@@ -249,8 +360,8 @@ class Telegram extends \CommonDBTM
                                             }
                                         }
                                         $data['reply_markup'] = new InlineKeyboard([
-                                            ['text' => 'Завершить создание', 'callback_data' => 'action=finish_ticket&users_id='.$user->fields['users_id']],
-                                            ['text' => 'Создать новую', 'callback_data' => 'action=add_ticket&users_id='.$user->fields['users_id']]
+                                            ['text' => 'Завершить создание', 'callback_data' => 'cmd=finish_ticket&user='.$user->fields['users_id']],
+                                            ['text' => 'Создать новую', 'callback_data' => 'cmd=add_ticket&user='.$user->fields['users_id']]
                                         ]);
                                     } else { // вывод предложения для ввода данных по следующему полю
                                         $data['text'] = $field['request_translation'];
@@ -261,7 +372,7 @@ class Telegram extends \CommonDBTM
                                             $data['reply_markup'] = new InlineKeyboard([
                                                 [
                                                     'text' => 'Пропустить', 
-                                                    'callback_data' => 'action=skip_field&users_id='.$user->fields['users_id'].'&field='.$field['id']
+                                                    'callback_data' => 'cmd=skip_field&user='.$user->fields['users_id'].'&field='.$field['id']
                                                 ]
                                             ]);
                                         }print_r($searchText);
@@ -291,6 +402,17 @@ class Telegram extends \CommonDBTM
             echo $e->getMessage();
             die();
         }
+    }
+
+    static function verticalInlineKeyboard($keyboardButtons) {
+        $inline_keyboard = new InlineKeyboard($keyboardButtons);
+        $keysV = [];
+        $keysH = $inline_keyboard->__get('inline_keyboard')[0];
+        foreach($keysH as $id => $key) {
+            $keysV[$id][0] = $key;
+        }
+        $inline_keyboard->__set('inline_keyboard', $keysV);
+        return $inline_keyboard;
     }
 
 }

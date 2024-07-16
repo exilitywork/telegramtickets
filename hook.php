@@ -40,6 +40,16 @@ function plugin_telegramtickets_install() {
 
     if(!$DB->runFile(GLPI_ROOT . "/plugins/telegramtickets/sql/structure.sql")) die("SQL error");
 
+    // update table
+    $iterator = $DB->request('SHOW COLUMNS from `glpi_plugin_telegramtickets_users` LIKE `authtype`');
+    if(count($iterator) == 0) {
+        $DB->request('ALTER TABLE `glpi_plugin_telegramtickets_users` ADD `authtype` VARCHAR(255) NULL');
+    }
+    $iterator = $DB->request('SHOW COLUMNS from `glpi_plugin_telegramtickets_users` LIKE `state`');
+    if(count($iterator) == 0) {
+        $DB->request('ALTER TABLE `glpi_plugin_telegramtickets_users` ADD `state` VARCHAR(255) NULL');
+    }
+
     $cron = new \CronTask();
     if (!$cron->getFromDBbyName('GlpiPlugin\Telegramtickets\Cron', 'TTListenMessageTelegram')) {
         \CronTask::Register('GlpiPlugin\Telegramtickets\Cron', 'TTListenMessageTelegram', 60,

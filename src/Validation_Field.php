@@ -22,39 +22,30 @@
  * You should have received a copy of the GNU General Public License
  * along with Telegram Tickets. If not, see <http://www.gnu.org/licenses/>.
  * -------------------------------------------------------------------------
- * @copyright Copyright (C) 2023-2024 by Oleg Кapeshko
+ * @copyright Copyright (C) 2023-2023 by Oleg Кapeshko
  * @license   GPLv2 https://www.gnu.org/licenses/gpl-2.0.html
  * @link      https://github.com/exilitywork/telegramtickets
  * -------------------------------------------------------------------------
  */
 
-ini_set('display_errors', 'On');
-error_reporting(E_ALL);
+namespace GlpiPlugin\Telegramtickets;
 
-use GlpiPlugin\Telegramtickets\Telegram;
-
-echo('<pre>');
-$homepage = file_get_contents(__DIR__.'/../mode');
-if($homepage == 2) echo 4;
-echo $homepage;
-if(file_exists(__DIR__.'/../mode1') && file_get_contents(__DIR__.'/../mode1') == 2) {
-    echo file_exists(__DIR__.'/../mode');
+if (!defined('GLPI_ROOT')) {
+    die("Sorry. You can't access directly to this file");
 }
 
-require_once __DIR__.'/../vendor/autoload.php';
-include (__DIR__."/../../../inc/includes.php");
+class Validation_Field extends \CommonDBTM {
 
-Telegram::listen();
+    public static function getTypeName($nb = 0) {
+        return 'Validation_Field';
+    }
 
-/*$iterator = $DB->request('SHOW COLUMNS from `glpi_plugin_telegramtickets_users` LIKE `authtype`');
-if(count($iterator) == 0) {
-    $DB->request('ALTER TABLE `glpi_plugin_telegramtickets_users` ADD `authtype` VARCHAR(255) NULL AFTER `is_authorized`');
+    static function getFields() {
+        $outFields = [];
+        $fields = (new self)->find();
+        foreach($fields as $field) {
+            $outFields[$field['fields_id']] = $field['is_mandatory'];
+        }
+        return $outFields;
+    }
 }
-print_r(count($iterator));*/
-
-//ALTER TABLE `glpi_plugin_telegramtickets_users` ADD `authtype` VARCHAR(255) NULL AFTER `is_authorized`;
-$auth = new \Auth;
-print_r($auth->getLoginAuthMethods());
-
-$tt = new \TicketTemplate;
-            $fields = $tt->getAllowedFields();print_r($fields);
