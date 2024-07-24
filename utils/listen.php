@@ -33,28 +33,7 @@ error_reporting(E_ALL);
 
 use GlpiPlugin\Telegramtickets\Telegram;
 
-echo('<pre>');
-$homepage = file_get_contents(__DIR__.'/../mode');
-if($homepage == 2) echo 4;
-echo $homepage;
-if(file_exists(__DIR__.'/../mode1') && file_get_contents(__DIR__.'/../mode1') == 2) {
-    echo file_exists(__DIR__.'/../mode');
-}
-
 require_once __DIR__.'/../vendor/autoload.php';
 include (__DIR__."/../../../inc/includes.php");
 
 Telegram::listen();
-
-/*$iterator = $DB->request('SHOW COLUMNS from `glpi_plugin_telegramtickets_users` LIKE `authtype`');
-if(count($iterator) == 0) {
-    $DB->request('ALTER TABLE `glpi_plugin_telegramtickets_users` ADD `authtype` VARCHAR(255) NULL AFTER `is_authorized`');
-}
-print_r(count($iterator));*/
-
-//ALTER TABLE `glpi_plugin_telegramtickets_users` ADD `authtype` VARCHAR(255) NULL AFTER `is_authorized`;
-$auth = new \Auth;
-print_r($auth->getLoginAuthMethods());
-
-$tt = new \TicketTemplate;
-            $fields = $tt->getAllowedFields();print_r($fields);
