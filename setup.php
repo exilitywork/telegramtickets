@@ -28,7 +28,7 @@
  * -------------------------------------------------------------------------
  */
 
-define('PLUGIN_TELEGRAMTICKETS_VERSION', '0.0.1');
+define('PLUGIN_TELEGRAMTICKETS_VERSION', '0.2.1');
 
 // Minimal GLPI version, inclusive
 define("PLUGIN_TELEGRAMTICKETS_MIN_GLPI_VERSION", "10.0.1");
