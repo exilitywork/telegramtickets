@@ -176,10 +176,11 @@ class User extends \CommonDBTM {
                     }
                     $data['text'] = 'Пользователь успешно сохранён: '.$user['realname'].' '.$user['firstname'].' ('.$user['entity'].').';
                     if(file_exists(__DIR__.'/../mode') && file_get_contents(__DIR__.'/../mode') == 1) {
-                        $data['text'] .= PHP_EOL.'Теперь вы можете создать заявку. Для этого нажмите кнопку "Создать заявку"';
+                        $data['text'] .= PHP_EOL.'Теперь вы можете работать с заявками: создать новую или просмотреть список';
                         $data['reply_markup'] = new Keyboard([
                             'keyboard' => [
-                                ['Создать заявку']
+                                ['Создать заявку'],
+                                ['Список заявок']
                             ], 
                             'resize_keyboard' => true,
                             'selective' => true

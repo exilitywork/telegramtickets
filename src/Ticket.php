@@ -315,10 +315,11 @@ class Ticket extends \CommonDBTM {
                             $botUsername = Config::getOption('bot_username');
                             $telegram = new Telegram($botApiKey, $botUsername);
                             $data['text'] = 'Создана заявка с ID: '.$id.PHP_EOL;
-                            $data['text'] .= 'Для создания новой заявки нажмите кнопку "Создать заявку"'.PHP_EOL;
+                            $data['text'] .= 'Для создания новой заявки нажмите кнопку "Создать заявку" или откройте весь список'.PHP_EOL;
                             $data['reply_markup'] = new Keyboard([
                                 'keyboard' => [
-                                    ['Создать заявку']
+                                    ['Создать заявку'],
+                                    ['Список заявок']
                                 ], 
                                 'resize_keyboard' => true,
                                 'selective' => true
@@ -1408,12 +1409,13 @@ class Ticket extends \CommonDBTM {
             $users = \Group_User::getGroupUsers($config['supervisor_groups_id'], $conditions);
             if(!$isNew) {
                 foreach($users as $user) {
+                    $tempUsers = [];
                     if($user['id'] == $userId) {
-                        $users = [$user];
+                        $tempUsers = [$user];
                         break;
                     }
                 }
-                $users = [];
+                $users = $tempUsers;
             }
             
             if(count($users) == 0) {
@@ -1444,7 +1446,8 @@ class Ticket extends \CommonDBTM {
                             [['text' => 'Вернуться к списку заявок', 'callback_data' => 'cmd=list_tickets&user='.$user['id']]]
                         );
                     }
-                    
+                    $telegram = new Telegram;
+                    $telegram->send($data);
                 }
             }
             if($isNew) {
