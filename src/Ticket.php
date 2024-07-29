@@ -1876,7 +1876,9 @@ class Ticket extends \CommonDBTM {
                 // автор комментария
                 $user = new \User();
                 $user->getFromDB($followup->fields['users_id']);
-                $text .= 'Автор: '.$user->fields['realname'].' '.$user->fields['firstname'];
+                $text .= 'Автор: '.$user->fields['realname'].' '.$user->fields['firstname'].PHP_EOL;
+                // текст комментария
+                $text .= 'Комментарий: '.\Glpi\RichText\RichText::getTextFromHtml($followup->fields['content']);
                 
                 $superTargets = [];
                 $class = new $ticket->userlinkclass();

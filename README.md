@@ -1,6 +1,6 @@
 readme under development..
 
-Non webhook instalation
+Non webhook installation
 For update use system cron:
 * * * * * sleep  0 ; /usr/bin/php8.1 /var/www/glpi/plugins/telegramtickets/utils/listen.php >> /var/log/cronjob.log 2>&1
 * * * * * sleep 10 ; /usr/bin/php8.1 /var/www/glpi/plugins/telegramtickets/utils/listen.php >> /var/log/cronjob.log 2>&1
