@@ -1408,8 +1408,8 @@ class Ticket extends \CommonDBTM {
             $superTargets = [];
             $users = \Group_User::getGroupUsers($config['supervisor_groups_id'], $conditions);
             if(!$isNew) {
+                $tempUsers = [];
                 foreach($users as $user) {
-                    $tempUsers = [];
                     if($user['id'] == $userId) {
                         $tempUsers = [$user];
                         break;
