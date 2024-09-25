@@ -190,8 +190,8 @@ class Telegram extends \CommonDBTM
                                     //print_r($user->getAuthTypeAndId($user->fields['authtype']));
                                     $auth = $user->getAuthTypeAndId($user->fields['authtype']);
                                     if($userGLPI->getFromDBbyNameAndAuth($text, $auth['authtype'], $auth['auth_id']) && $userGLPI->fields['is_active'] && !$userGLPI->fields['is_deleted']) {
-                                        echo '<pre>';
-                                        print_r($userGLPI);
+                                        //echo '<pre>';
+                                        //print_r($userGLPI);
                                         $user->fields['id'] = $chatId;
                                         $user->fields['users_id'] = $userGLPI->fields['id'];
                                         $user->fields['is_authorized'] = 0;
@@ -236,7 +236,7 @@ class Telegram extends \CommonDBTM
                                         }
                                         //print_r($auth->auth_succeded);
                                     }
-                                    print_r($user);
+                                    //print_r($user);
                                     /*if($userGLPI->getFromDBbyName($text)) {
                                         $user->fields['id'] = $chatId;
                                         $user->fields['users_id'] = $userGLPI->fields['id'];
@@ -375,7 +375,7 @@ class Telegram extends \CommonDBTM
                                                     'callback_data' => 'cmd=skip_field&user='.$user->fields['users_id'].'&field='.$field['id']
                                                 ]
                                             ]);
-                                        }print_r($searchText);
+                                        }//print_r($searchText);
                                         if($tempData = $ticket->getInputInfo($field, $data, $user, $searchText)) {
                                             $data = $tempData;
                                         }

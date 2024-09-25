@@ -132,7 +132,7 @@ class User extends \CommonDBTM {
               *     [ [ "text" => "Включить звук", "callback_data" => "cmd=sound&value=1" ] ]
               *  ];
               **/    
-            print_r($query->getData());
+            //print_r($query->getData());
             parse_str($query->getData(), $params);
          
             $data = [

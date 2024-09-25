@@ -265,7 +265,7 @@ class Ticket extends \CommonDBTM {
                 // пропуск необязательно поля
                 case 'skip_field':
                     $ticket->fields[self::FIELDS[$params['field']]] = -1; // если поле пропущено, то в него записывается "-1"
-                    print_r($ticket);
+                    //print_r($ticket);
                     $ticket->updateInDB(array_keys($ticket->fields));
                     $data = $ticket->create($data, $user, $params['cmd']);
                     break;
@@ -899,7 +899,7 @@ class Ticket extends \CommonDBTM {
             }
             
             //print_r($this->getNextInput($user->fields['users_id']));
-            print_r($data);
+            //print_r($data);
         }
 
         return $data;
@@ -1276,15 +1276,40 @@ class Ticket extends \CommonDBTM {
 
         $tickets = [];
         $buttons = [];
+        $userGroups = [];
+        $groups = \Group_User::getUserGroups($user->fields['users_id']);
+        foreach($groups as $group) {
+            array_push($userGroups, $group['id']);
+        }
 
         // запрос общего количества доступных заявок
         $req = $DB->request([
+            'SELECT' => 'glpi_tickets.id',
             'COUNT' => 'cnt',
+            'DISTINCT'  => true,
             'FROM'      => 'glpi_tickets',
+            'LEFT JOIN' => [
+                'glpi_tickets_users' => [
+                    'FKEY' => [
+                        'glpi_tickets'          => 'id',
+                        'glpi_tickets_users'    => 'tickets_id'
+                    ]
+                ],
+                'glpi_groups_tickets' => [
+                    'FKEY' => [
+                        'glpi_tickets'          => 'id',
+                        'glpi_groups_tickets'    => 'tickets_id'
+                    ]
+                ]
+            ],
             'WHERE'     => [
-                'entities_id'   => 0,
-                'is_deleted'    => 0,
-                'status'        => ['<', 5]
+                'glpi_tickets.entities_id'      => 0,
+                'glpi_tickets.is_deleted'       => 0,
+                'glpi_tickets.status'           => ['<', 5],
+                'OR' => [
+                    'glpi_tickets_users.users_id'   => $user->fields['users_id'],
+                    'glpi_groups_tickets.groups_id' => $userGroups
+                ]
             ]
         ]);
         foreach($req as $id => $row) {
@@ -1297,12 +1322,30 @@ class Ticket extends \CommonDBTM {
             ],
             'DISTINCT'  => true,
             'FROM'      => 'glpi_tickets',
-            'WHERE'     => [
-                'entities_id'           => 0,
-                'is_deleted' => 0,
-                'status'        => ['<', 5]
+            'LEFT JOIN' => [
+                'glpi_tickets_users' => [
+                    'FKEY' => [
+                        'glpi_tickets'          => 'id',
+                        'glpi_tickets_users'    => 'tickets_id'
+                    ]
+                ],
+                'glpi_groups_tickets' => [
+                    'FKEY' => [
+                        'glpi_tickets'          => 'id',
+                        'glpi_groups_tickets'    => 'tickets_id'
+                    ]
+                ],
             ],
-            'ORDERBY'   => 'id',
+            'WHERE'     => [
+                'glpi_tickets.entities_id'      => 0,
+                'glpi_tickets.is_deleted'       => 0,
+                'glpi_tickets.status'           => ['<', 5],
+                'OR' => [
+                    'glpi_tickets_users.users_id'   => $user->fields['users_id'],
+                    'glpi_groups_tickets.groups_id' => $userGroups
+                ]
+            ],
+            'ORDERBY'   => 'glpi_tickets.date_mod DESC',
             'START'     => $offset,
             'LIMIT'     => 10
         ]);
@@ -1614,8 +1657,8 @@ class Ticket extends \CommonDBTM {
      * @return bool
     **/
     static function updateItem($ticket) {
-        echo '<pre>';
-        print_r($ticket);
+        //echo '<pre>';
+        //print_r($ticket);
         //die();
     }
 
@@ -1639,7 +1682,8 @@ class Ticket extends \CommonDBTM {
         } else {
             return false;
         }
-        if($ticket->update($input)) print_r($input);
+        //if($ticket->update($input)) print_r($input);
+        $ticket->update($input);
         return true;
     }
 
@@ -1858,7 +1902,7 @@ class Ticket extends \CommonDBTM {
     static function addFollowup(\ITILFollowup $followup) {
         if(file_exists(__DIR__.'/../mode') && file_get_contents(__DIR__.'/../mode') == 1) {
             if($followup->fields['itemtype'] == 'Ticket' && $followup->fields['is_private'] === 0) {
-                echo '<pre>';
+                //echo '<pre>';
                 $config = Config::getConfig();
                 $conditions = [
                     'glpi_users.is_deleted' => 0,
